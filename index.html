@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>護髖好幫手 APP</title>
+  
+  <!-- 載入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 載入 React 核心庫 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- 載入 Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; width: 100%; background-color: #0f172a; }
+    #root { height: 100%; display: flex; align-items: center; justify-content: center; }
+    /* 隱藏滾動條但保持可以滾動 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    /* 聊天室的漸變背景 */
+    .chat-bg { background-image: radial-gradient(circle at top right, #fdf4ff, #f8fafc); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useRef } = React;
+
+    // --- 自製無依賴 SVG 圖示 ---
+    const IconCalendar = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
+    const IconShield = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>;
+    const IconBook = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>;
+    const IconPhone = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
+    const IconSettings = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+    const IconSave = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;
+    const IconArrowLeft = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>;
+    const IconChevronLeft = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>;
+    const IconChevronRight = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>;
+    const IconAlertTriangle = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
+    const IconCheckCircle = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>;
+    const IconInfo = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
+    const IconSend = ({ className }) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>;
+
+    // 輪播小提醒資料
+    const TIPS_LIST = [
+      "返家初期請避免坐過低的椅子，並保持雙腿微張開，不要交叉雙腿喔！",
+      "睡覺時，可以在雙腿中間夾一個枕頭，防止睡夢中不自覺雙腿交叉。",
+      "轉身時請以「小碎步」慢慢轉動，切勿直接扭轉您的腰部與骨盆！",
+      "請保持家中地面淨空，移除容易絆倒的電線或小地毯，預防跌倒。"
+    ];
+
+    // 圖鑑資料
+    const guides = [
+      { title: '穿鞋技巧', icon: '👞', description: '請勿彎腰穿鞋！\n請坐穩後，使用「長柄鞋拔」協助穿鞋，保持身體挺直。', doText: '使用長柄鞋拔', dontText: '直接彎腰大於90度' },
+      { title: '撿拾物品', icon: '🥢', description: '物品掉落時，請勿直接蹲下！\n請使用「取物夾」或請家人代勞。', doText: '使用長柄取物夾', dontText: '直接下蹲或彎腰' },
+      { title: '上下車守則', icon: '🚗', description: '請將副駕駛座椅背向後傾斜、座位後推。\n坐入時雙腳併攏，一起轉身進入車內。', doText: '雙腳併攏轉身坐入', dontText: '單腳跨入或過度前傾' },
+      { title: '如廁無礙空間', icon: '🚽', description: '一般馬桶過低易造成髖關節過度屈曲。\n請使用「馬桶增高器」或有扶手的坐廁。', doText: '使用馬桶增高器', dontText: '坐在過低的椅子或馬桶' }
+    ];
+
+    function App() {
+      // --- State Management ---
+      const [currentScreen, setCurrentScreen] = useState('home'); // 'home', 'coach', 'guide', 'ai'
+      const [surgeryDate, setSurgeryDate] = useState('');
+      const [daysRemaining, setDaysRemaining] = useState(null);
+      const [emergencyPhone, setEmergencyPhone] = useState('');
+      const [showPhoneSetting, setShowPhoneSetting] = useState(false);
+      
+      const [isCoachActive, setIsCoachActive] = useState(false);
+      const [pitchAngle, setPitchAngle] = useState(0); 
+      const [isAlerting, setIsAlerting] = useState(false);
+      const [sensorStatus, setSensorStatus] = useState('idle'); // idle, waiting, active, error
+      const [sensorErrorMsg, setSensorErrorMsg] = useState('');
+      
+      const [guideIndex, setGuideIndex] = useState(0);
+      const [avatar, setAvatar] = useState('😊');
+      const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+      const [tipIndex, setTipIndex] = useState(0);
+
+      // AI Chat State
+      const [chatHistory, setChatHistory] = useState([
+        { role: 'model', text: '您好！我是您的專屬 ✨智慧護理顧問。您在術後復原上有任何疑問嗎？（例如：「我可以側睡嗎？」、「傷口有點癢怎麼辦？」）請隨時問我喔！' }
+      ]);
+      const [chatInput, setChatInput] = useState('');
+      const [isChatLoading, setIsChatLoading] = useState(false);
+      const messagesEndRef = useRef(null);
+
+      const GOLDEN_PERIOD_DAYS = 90; 
+      const DANGER_ANGLE = 80; 
+
+      useEffect(() => {
+        const savedDate = localStorage.getItem('hipCare_surgeryDate');
+        const savedPhone = localStorage.getItem('hipCare_emergencyPhone');
+        const savedAvatar = localStorage.getItem('hipCare_avatar');
+        
+        if (savedDate) {
+          setSurgeryDate(savedDate);
+          calculateCountdown(savedDate);
+        }
+        if (savedPhone) setEmergencyPhone(savedPhone);
+        if (savedAvatar) setAvatar(savedAvatar);
+      }, []);
+
+      useEffect(() => {
+        const interval = setInterval(() => {
+          setTipIndex((prev) => (prev + 1) % TIPS_LIST.length);
+        }, 10000);
+        return () => clearInterval(interval);
+      }, []);
+
+      // Auto-scroll chat to bottom
+      useEffect(() => {
+        if(currentScreen === 'ai') {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, [chatHistory, currentScreen]);
+
+      const calculateCountdown = (dateString) => {
+        if (!dateString) return;
+        const surgery = new Date(dateString);
+        const today = new Date();
+        surgery.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+        
+        const diffTime = today - surgery;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          setDaysRemaining(GOLDEN_PERIOD_DAYS);
+        } else if (diffDays >= GOLDEN_PERIOD_DAYS) {
+          setDaysRemaining(0);
+        } else {
+          setDaysRemaining(GOLDEN_PERIOD_DAYS - diffDays);
+        }
+      };
+
+      const handleDateChange = (e) => {
+        const newDate = e.target.value;
+        setSurgeryDate(newDate);
+        localStorage.setItem('hipCare_surgeryDate', newDate);
+        calculateCountdown(newDate);
+      };
+
+      const handlePhoneSave = () => {
+        localStorage.setItem('hipCare_emergencyPhone', emergencyPhone);
+        setShowPhoneSetting(false);
+      };
+
+      const handleAvatarSelect = (icon) => {
+        setAvatar(icon);
+        localStorage.setItem('hipCare_avatar', icon);
+        setShowAvatarPicker(false);
+      };
+
+      const progressPercent = daysRemaining === null ? 0 : Math.max(0, Math.min(100, ((GOLDEN_PERIOD_DAYS - daysRemaining) / GOLDEN_PERIOD_DAYS) * 100));
+
+      // --- 手機姿勢感測邏輯 ---
+      const handleOrientation = useCallback((event) => {
+        setSensorStatus('active');
+        if (!event || event.beta === null || event.beta === undefined) {
+          return;
+        }
+        let absoluteBeta = Math.abs(event.beta);
+        let bendAngle = Math.abs(90 - absoluteBeta);
+        if (bendAngle > 90 && bendAngle < 180) {
+            bendAngle = 180 - bendAngle;
+        }
+        setPitchAngle(Math.round(bendAngle));
+      }, []);
+
+      useEffect(() => {
+        if (isCoachActive) {
+          if (pitchAngle >= DANGER_ANGLE) {
+            setIsAlerting(true);
+            if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]);
+          } else {
+            setIsAlerting(false);
+          }
+        } else {
+          setIsAlerting(false);
+          setPitchAngle(0);
+        }
+      }, [pitchAngle, isCoachActive]);
+
+      const toggleCoach = () => {
+        if (!isCoachActive) {
+          setSensorStatus('waiting');
+          setSensorErrorMsg('');
+          
+          if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
+              .then(permissionState => {
+                if (permissionState === 'granted') {
+                  window.addEventListener('deviceorientation', handleOrientation, true);
+                  setIsCoachActive(true);
+                } else {
+                  setSensorStatus('error');
+                  setSensorErrorMsg('需要同意感測器權限才能使用姿勢教練！請至手機設定或重新整理網頁。');
+                  alert('需要同意感測器權限才能使用姿勢教練！');
+                }
+              })
+              .catch(error => {
+                console.error(error);
+                setSensorStatus('error');
+                setSensorErrorMsg('無法啟動感測器。如果是嵌在 Google Sites 內，瀏覽器可能會為了安全阻擋它！');
+                alert('感測器啟動失敗！如果是嵌入在協作平台，請嘗試將此程式碼發佈為獨立的 HTML 網頁測試。');
+              });
+          } else {
+            window.addEventListener('deviceorientation', handleOrientation, true);
+            setIsCoachActive(true);
+            
+            setTimeout(() => {
+              setSensorStatus((prev) => {
+                if (prev === 'waiting') {
+                  setSensorErrorMsg('已啟動但沒收到訊號。這通常是因為 Google Sites 內嵌的 iframe 安全限制阻擋了感測器，請使用獨立網頁測試！');
+                  return 'error';
+                }
+                return prev;
+              });
+            }, 3000);
+          }
+        } else {
+          window.removeEventListener('deviceorientation', handleOrientation, true);
+          setIsCoachActive(false);
+          setIsAlerting(false);
+          setSensorStatus('idle');
+          setPitchAngle(0);
+        }
+      };
+
+      // --- Gemini API 處理邏輯 ---
+      const handleSendChat = async () => {
+        if (!chatInput.trim()) return;
+
+        const userMessage = chatInput.trim();
+        setChatInput('');
+        setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
+        setIsChatLoading(true);
+
+        try {
+          const apiKey = ""; // API key is provided by the execution environment
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+          
+          const payload = {
+            contents: [{ parts: [{ text: userMessage }] }],
+            systemInstruction: { 
+              parts: [{ 
+                text: "你是一位非常親切、有耐心且專業的骨科復健護理師，專門解答『全人工髖關節置換術（THA）』病患在術後居家復原期間遇到的問題。你的回答必須：\n1. 溫暖、鼓勵、口語化，適合年長者閱讀。\n2. 句子簡短、重點明確。\n3. 提供實用的護理建議（例如：如何避免超過90度彎腰、如何緩解輕微不適）。\n4. 【重要安全守則】：如果有任何異常疼痛、傷口紅腫熱痛流出分泌物，或疑似脫位的情況，請務必溫柔但堅定地提醒病患『立刻聯絡醫生或回診』，不要僅僅給予安慰。"
+              }] 
+            }
+          };
+
+          // 實現 Exponential Backoff (1s, 2s, 4s, 8s, 16s)
+          const delays = [1000, 2000, 4000, 8000, 16000];
+          let responseText = '';
+
+          for (let i = 0; i < 5; i++) {
+            try {
+              const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+
+              if (!response.ok) throw new Error('Network response was not ok');
+              
+              const data = await response.json();
+              if(data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+                 responseText = data.candidates[0].content.parts[0].text;
+                 break; // Success, exit retry loop
+              } else {
+                 throw new Error('Unexpected API response structure');
+              }
+            } catch (error) {
+              if (i === 4) { // Last retry failed
+                responseText = "不好意思，護理站的連線稍微有點不穩 😥。請您稍後再試一次，或者如果身體很不舒服，請優先點擊首頁下方的『緊急求救』聯絡家屬喔！";
+              } else {
+                await new Promise(r => setTimeout(r, delays[i])); // Wait and retry
+              }
+            }
+          }
+
+          setChatHistory(prev => [...prev, { role: 'model', text: responseText }]);
+
+        } catch (error) {
+          console.error("Chat Error:", error);
+          setChatHistory(prev => [...prev, { role: 'model', text: "系統目前連線有點問題，請稍後再試一次喔！" }]);
+        } finally {
+          setIsChatLoading(false);
+        }
+      };
+
+      // ================= 畫面渲染 =================
+      const renderHome = () => (
+        <div className="flex flex-col h-full bg-slate-50 relative">
+          {/* 頭像選擇彈跳視窗 */}
+          {showAvatarPicker && (
+            <div className="absolute inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-6 backdrop-blur-sm">
+              <div className="bg-white rounded-[2rem] p-6 w-full shadow-2xl">
+                <h3 className="text-2xl font-black text-center text-slate-800 mb-6 border-b-2 border-slate-100 pb-4">選擇個人圖示</h3>
+                
+                <div className="space-y-6">
+                  <div>
+                    <div className="text-sm font-bold text-slate-400 mb-2 px-2">男性</div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {['👦🏻', '👨🏻', '🧔🏻‍♂️', '👴🏻'].map(icon => (
+                        <button key={icon} onClick={() => handleAvatarSelect(icon)} className="text-4xl bg-slate-50 hover:bg-blue-100 p-3 rounded-2xl border-2 border-transparent hover:border-blue-400 transition-colors active:scale-95">
+                          {icon}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm font-bold text-slate-400 mb-2 px-2">女性</div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {['👧🏻', '👩🏻', '👩🏻‍🦱', '👵🏻'].map(icon => (
+                        <button key={icon} onClick={() => handleAvatarSelect(icon)} className="text-4xl bg-slate-50 hover:bg-blue-100 p-3 rounded-2xl border-2 border-transparent hover:border-blue-400 transition-colors active:scale-95">
+                          {icon}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <button onClick={() => setShowAvatarPicker(false)} className="w-full mt-8 py-4 bg-slate-200 text-slate-700 font-bold text-xl rounded-2xl active:bg-slate-300">
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 頂部 Header */}
+          <div className="pt-10 pb-6 px-6 bg-blue-100 flex justify-between items-center shadow-sm">
+            <div>
+              <h1 className="text-4xl font-black text-slate-800 tracking-wide">護髖好幫手</h1>
+              <p className="text-xl font-bold text-blue-700 mt-2">您的專屬防護教練</p>
+            </div>
+            <button onClick={() => setShowAvatarPicker(true)} className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-md border-4 border-white text-5xl active:scale-95 transition-transform">
+              {avatar}
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-5 pb-40 space-y-5 no-scrollbar pt-5">
+            
+            {/* 倒數進度卡片 */}
+            <div className="bg-white rounded-3xl p-6 shadow-lg border-2 border-slate-100">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <div className="text-2xl font-black text-rose-600 mb-1">復原解封進度</div>
+                  <div className="text-lg font-bold text-slate-500">距離黃金12週還有</div>
+                </div>
+                
+                <label className="relative block cursor-pointer">
+                  <input type="date" value={surgeryDate} onChange={handleDateChange} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10" />
+                  <div className="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-lg font-black flex items-center gap-2 border-2 border-slate-200 pointer-events-none">
+                    <IconCalendar className="w-5 h-5" /> 
+                    {surgeryDate ? surgeryDate.replace(/-/g, '/') : '設定日期'}
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-baseline gap-2 my-2">
+                <span className="text-6xl font-black text-slate-800 tracking-tighter">
+                  {daysRemaining !== null ? daysRemaining : '--'}
+                </span>
+                <span className="text-2xl font-black text-slate-500">天</span>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex justify-between text-base font-bold text-slate-500 mb-2">
+                  <span>手術日</span>
+                  <span>解封日</span>
+                </div>
+                <div className="h-5 w-full bg-slate-200 rounded-full overflow-hidden relative">
+                  <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all duration-1000" style={{ width: `${progressPercent}%` }} />
+                </div>
+              </div>
+            </div>
+
+            {/* 新增：✨ 智慧護髖顧問按鈕 */}
+            <button onClick={() => setCurrentScreen('ai')} className="w-full bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-700 hover:to-violet-700 rounded-[2rem] p-5 flex items-center gap-4 shadow-lg shadow-fuchsia-600/20 active:scale-95 transition-transform border-4 border-fuchsia-200">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-[1.2rem] flex items-center justify-center text-white shadow-inner flex-shrink-0">
+                <span className="text-3xl animate-pulse">✨</span>
+              </div>
+              <div className="text-left text-white">
+                <div className="font-black text-3xl mb-1 drop-shadow-md">智慧護髖顧問</div>
+                <div className="text-lg font-bold text-fuchsia-100 drop-shadow-sm">AI 24H 復健解惑解答</div>
+              </div>
+            </button>
+
+            {/* 核心功能按鈕 */}
+            <div className="grid grid-cols-2 gap-4">
+              <button onClick={() => setCurrentScreen('coach')} className="bg-emerald-50 hover:bg-emerald-100 rounded-[2rem] p-5 flex flex-col items-center justify-center gap-3 border-2 border-emerald-200 shadow-sm active:scale-95 transition-transform">
+                <div className="w-16 h-16 bg-emerald-500 rounded-[1.2rem] flex items-center justify-center text-white shadow-md"><IconShield className="w-10 h-10" /></div>
+                <div className="text-center">
+                  <div className="font-black text-emerald-900 text-2xl">姿勢教練</div>
+                  <div className="text-base font-bold text-emerald-700 mt-1">彎腰警示器</div>
+                </div>
+              </button>
+
+              <button onClick={() => setCurrentScreen('guide')} className="bg-indigo-50 hover:bg-indigo-100 rounded-[2rem] p-5 flex flex-col items-center justify-center gap-3 border-2 border-indigo-200 shadow-sm active:scale-95 transition-transform">
+                <div className="w-16 h-16 bg-indigo-500 rounded-[1.2rem] flex items-center justify-center text-white shadow-md"><IconBook className="w-10 h-10" /></div>
+                <div className="text-center">
+                  <div className="font-black text-indigo-900 text-2xl">解雷圖鑑</div>
+                  <div className="text-base font-bold text-indigo-700 mt-1">看圖學動作</div>
+                </div>
+              </button>
+            </div>
+
+            {/* 自動輪播溫馨提醒 */}
+            <div className="bg-blue-50 rounded-2xl p-5 flex gap-4 items-start border-2 border-blue-200">
+              <IconInfo className="w-8 h-8 text-blue-600 flex-shrink-0 mt-1" />
+              <div className="min-h-[4rem] flex items-center">
+                <p className="text-xl font-bold text-blue-900 leading-relaxed transition-opacity duration-500">
+                  <span className="text-blue-600 font-black mr-2">小提醒：</span>
+                  {TIPS_LIST[tipIndex]}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 底部緊急呼叫區塊 */}
+          <div className="absolute bottom-0 left-0 w-full bg-white rounded-t-[2rem] shadow-[0_-15px_40px_rgba(0,0,0,0.1)] p-5 z-10 border-t border-slate-100">
+            {showPhoneSetting && (
+              <div className="flex gap-2 mb-4">
+                <input type="tel" placeholder="輸入家屬電話號碼" value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} className="w-0 flex-1 bg-slate-100 border-2 border-slate-200 rounded-2xl px-4 py-3 font-black text-xl text-slate-800 outline-none focus:border-blue-400" />
+                <button onClick={handlePhoneSave} className="bg-slate-800 text-white px-5 rounded-2xl font-black text-lg flex items-center justify-center whitespace-nowrap active:scale-95 transition-transform">
+                  <IconSave className="w-6 h-6 mr-1" />儲存
+                </button>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => setShowPhoneSetting(!showPhoneSetting)} className={`w-16 h-16 rounded-2xl flex items-center justify-center border-2 transition-colors flex-shrink-0 ${showPhoneSetting ? 'bg-slate-200 border-slate-300 text-slate-800' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}><IconSettings className="w-8 h-8" /></button>
+              <a href={emergencyPhone ? `tel:${emergencyPhone}` : '#'} onClick={(e) => { if (!emergencyPhone) { e.preventDefault(); setShowPhoneSetting(true); } }} className="flex-1 bg-red-600 text-white rounded-2xl flex items-center justify-center gap-3 font-black text-2xl shadow-lg shadow-red-600/30 active:bg-red-700 active:scale-95 transition-all whitespace-nowrap">
+                <IconPhone className="w-7 h-7 animate-pulse" />
+                緊急求救
+              </a>
+            </div>
+          </div>
+        </div>
+      );
+
+      // --- Gemini AI Assistant Screen ---
+      const renderAiAssistant = () => (
+        <div className="flex flex-col h-full bg-white relative">
+          <div className="pt-10 pb-4 px-4 flex items-center z-10 bg-fuchsia-600 shadow-md">
+            <button onClick={() => setCurrentScreen('home')} className="p-3 bg-white/20 hover:bg-white/30 rounded-2xl text-white active:scale-95 transition"><IconArrowLeft className="w-8 h-8" /></button>
+            <div className="ml-5 text-white">
+              <div className="text-3xl font-black flex items-center gap-2">✨ 智慧護理顧問</div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-5 no-scrollbar chat-bg space-y-4">
+            {chatHistory.map((msg, index) => (
+              <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.role === 'model' && (
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-fuchsia-100 mr-2 flex-shrink-0 text-xl shadow-fuchsia-200">
+                    👩🏻‍⚕️
+                  </div>
+                )}
+                <div className={`max-w-[75%] rounded-3xl p-4 shadow-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-white text-slate-800 border-2 border-fuchsia-100 rounded-tl-sm'}`}>
+                  <p className="text-xl font-bold leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                </div>
+                {msg.role === 'user' && (
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shadow-sm ml-2 flex-shrink-0 text-xl border border-blue-200">
+                    {avatar}
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {isChatLoading && (
+              <div className="flex justify-start">
+                 <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-fuchsia-100 mr-2 flex-shrink-0 text-xl">👩🏻‍⚕️</div>
+                 <div className="bg-white border-2 border-fuchsia-100 rounded-3xl rounded-tl-sm p-4 shadow-sm flex items-center gap-2">
+                    <div className="w-3 h-3 bg-fuchsia-400 rounded-full animate-bounce"></div>
+                    <div className="w-3 h-3 bg-fuchsia-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    <div className="w-3 h-3 bg-fuchsia-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                 </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="bg-white p-4 pb-6 border-t border-slate-100 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+            <div className="flex gap-3">
+              <textarea 
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendChat();
+                  }
+                }}
+                placeholder="有什麼問題都可以問我喔！"
+                className="flex-1 bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 font-bold text-xl text-slate-800 outline-none focus:border-fuchsia-400 resize-none h-[4rem]"
+                disabled={isChatLoading}
+              />
+              <button 
+                onClick={handleSendChat}
+                disabled={isChatLoading || !chatInput.trim()}
+                className="w-16 h-16 bg-fuchsia-600 disabled:bg-slate-300 text-white rounded-2xl flex items-center justify-center active:scale-95 transition-transform flex-shrink-0 shadow-md"
+              >
+                <IconSend className="w-8 h-8" />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      const renderCoach = () => (
+        <div className={`flex flex-col h-full transition-colors duration-500 ${isAlerting ? 'bg-red-600' : 'bg-emerald-50'}`}>
+          <div className="pt-10 pb-4 px-4 flex items-center z-10 relative">
+            <button onClick={() => { setIsCoachActive(false); setCurrentScreen('home'); }} className="p-3 bg-white/40 rounded-2xl text-slate-900 active:scale-95"><IconArrowLeft className="w-8 h-8" /></button>
+            <span className="ml-5 text-3xl font-black text-slate-900">姿勢教練</span>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative z-10">
+            <div className="relative mb-10">
+              <div className={`absolute inset-0 rounded-full border-8 border-dashed opacity-30 ${isCoachActive && sensorStatus === 'active' ? 'animate-spin-slow' : ''} ${isAlerting ? 'border-white' : 'border-emerald-600'}`}></div>
+              <div className={`w-64 h-64 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all duration-300 ${isAlerting ? 'bg-red-700 scale-110 border-8 border-white' : 'bg-white border-8 border-emerald-100'}`}>
+                <span className={`text-2xl font-black mb-2 ${isAlerting ? 'text-red-200' : 'text-slate-500'}`}>彎腰角度</span>
+                <span className={`text-8xl font-black ${isAlerting ? 'text-white' : 'text-slate-800'}`}>{pitchAngle}°</span>
+              </div>
+            </div>
+
+            {isCoachActive && sensorStatus === 'waiting' && (
+              <div className="mb-4 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-xl font-bold animate-pulse">
+                ⏳ 正在等待手機感測器訊號...
+              </div>
+            )}
+            
+            {isCoachActive && sensorStatus === 'error' && (
+              <div className="mb-4 bg-red-100 text-red-800 px-5 py-3 rounded-xl font-bold text-left text-sm border-2 border-red-200">
+                ⚠️ <b>警告：</b> {sensorErrorMsg}
+                <br/><br/>
+                💡 <b>解法：</b>若您正在使用 Google Sites，請點擊分享連結，直接用 Chrome 或 Safari 「開啟原始網頁」測試。
+              </div>
+            )}
+
+            <h2 className={`text-4xl font-black mb-4 ${isAlerting ? 'text-white animate-bounce' : 'text-slate-800'}`}>
+              {isAlerting ? '危險！請挺直腰桿！' : (isCoachActive ? '教練偵測中...' : '教練已待命')}
+            </h2>
+            <p className={`text-2xl font-bold px-6 leading-relaxed ${isAlerting ? 'text-red-100' : 'text-slate-600'}`}>
+              請將手機「直立」放在您的<br/>胸前口袋或掛在胸前
+            </p>
+
+            <button onClick={toggleCoach} className={`mt-auto mb-10 w-full py-6 rounded-3xl text-3xl font-black text-white shadow-xl transition-all active:scale-95 border-b-8 ${isCoachActive ? (isAlerting ? 'bg-red-800 border-red-950' : 'bg-slate-700 border-slate-900') : 'bg-emerald-500 border-emerald-700'}`}>
+              {isCoachActive ? '停止偵測' : '啟動教練'}
+            </button>
+          </div>
+        </div>
+      );
+
+      const renderGuide = () => {
+        const guide = guides[guideIndex];
+        return (
+          <div className="flex flex-col h-full bg-slate-100">
+            <div className="pt-10 pb-4 px-4 flex items-center bg-white shadow-sm z-10">
+              <button onClick={() => setCurrentScreen('home')} className="p-3 bg-slate-100 rounded-2xl text-slate-800 active:scale-95"><IconArrowLeft className="w-8 h-8" /></button>
+              <span className="ml-5 text-3xl font-black text-slate-800">解雷圖鑑</span>
+              <div className="ml-auto bg-indigo-100 text-indigo-800 px-4 py-2 rounded-xl text-xl font-black">{guideIndex + 1} / {guides.length}</div>
+            </div>
+
+            <div className="flex-1 flex flex-col p-5 overflow-y-auto no-scrollbar pb-10">
+              <div className="bg-white rounded-[2.5rem] shadow-lg flex flex-col p-6 border-2 border-slate-100 relative overflow-hidden">
+                
+                <div className="w-full h-56 rounded-3xl mb-6 bg-gradient-to-br from-indigo-50 to-blue-100 flex items-center justify-center border-2 border-indigo-50 shadow-inner">
+                  <span className="text-8xl drop-shadow-lg transform hover:scale-110 transition-transform">{guide.icon}</span>
+                </div>
+                
+                <h2 className="text-4xl font-black text-slate-800 mb-4">{guide.title}</h2>
+                <p className="text-slate-600 text-xl font-bold leading-relaxed mb-8 whitespace-pre-line bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                  {guide.description}
+                </p>
+
+                <div className="w-full space-y-4">
+                  <div className="bg-emerald-50 border-2 border-emerald-200 p-5 rounded-2xl flex items-center gap-4">
+                    <IconCheckCircle className="w-10 h-10 text-emerald-600 flex-shrink-0" />
+                    <div className="font-black text-emerald-900 text-2xl">{guide.doText}</div>
+                  </div>
+                  <div className="bg-rose-50 border-2 border-rose-200 p-5 rounded-2xl flex items-center gap-4 opacity-90">
+                    <IconAlertTriangle className="w-10 h-10 text-rose-600 flex-shrink-0" />
+                    <div className="font-black text-rose-900 text-2xl">{guide.dontText}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between gap-4 mt-6">
+                <button onClick={() => setGuideIndex(Math.max(0, guideIndex - 1))} disabled={guideIndex === 0} className={`flex-1 py-6 rounded-3xl flex items-center justify-center gap-2 font-black text-2xl transition-all ${guideIndex === 0 ? 'bg-slate-200 text-slate-400' : 'bg-white text-indigo-700 shadow-md active:scale-95 border-2 border-indigo-100'}`}><IconChevronLeft className="w-7 h-7" /> 上一頁</button>
+                <button onClick={() => setGuideIndex(Math.min(guides.length - 1, guideIndex + 1))} disabled={guideIndex === guides.length - 1} className={`flex-1 py-6 rounded-3xl flex items-center justify-center gap-2 font-black text-2xl transition-all ${guideIndex === guides.length - 1 ? 'bg-slate-200 text-slate-400' : 'bg-indigo-600 text-white shadow-md active:scale-95 shadow-indigo-600/30'}`}>下一頁 <IconChevronRight className="w-7 h-7" /></button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div className="h-full w-full max-w-md mx-auto bg-slate-50 relative shadow-2xl overflow-hidden md:border-[12px] md:border-slate-800 md:rounded-[3rem]">
+          <div className="hidden md:block absolute top-0 inset-x-0 h-8 bg-slate-800 rounded-b-3xl w-1/3 mx-auto z-50"></div>
+          {currentScreen === 'home' && renderHome()}
+          {currentScreen === 'coach' && renderCoach()}
+          {currentScreen === 'guide' && renderGuide()}
+          {currentScreen === 'ai' && renderAiAssistant()}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
